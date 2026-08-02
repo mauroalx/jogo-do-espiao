@@ -280,6 +280,11 @@ body {
   }
 }
 
+.accusation__progress {
+  @include type.type-style('label-01');
+  color: var(--cds-text-secondary);
+}
+
 .role-card {
   display: flex;
   flex-direction: column;

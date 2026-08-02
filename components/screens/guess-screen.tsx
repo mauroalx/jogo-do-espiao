@@ -34,8 +34,8 @@ export function GuessScreen() {
           ))}
         </div>
         <p className="last-chance__help">
-          O espião fala um único palpite em voz alta. Sem pesquisar e sem segunda
-          tentativa.
+          {spies.length === 1 ? 'O espião fala' : 'A equipe de espiões combina'}{' '}
+          um único palpite em voz alta. Sem pesquisar e sem segunda tentativa.
         </p>
         <Stack gap={3} className="last-chance__actions">
           <Button size="lg" renderIcon={Checkmark} onClick={() => resolve(true)}>

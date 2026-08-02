@@ -10,9 +10,14 @@ export function ResultScreen() {
   if (!round) return null
 
   const spies = players.filter((player) => round.spyIds.includes(player.id))
-  const accused = players.find(
-    (player) => player.id === round.accusedPlayerId,
+  const accused = players.filter((player) =>
+    round.accusedPlayerIds.includes(player.id),
   )
+  const accusedNames = accused.map((player) => player.name).join(', ')
+  const correctlyAccused = accused.filter((player) =>
+    round.spyIds.includes(player.id),
+  )
+  const foundEverySpy = correctlyAccused.length === round.spyIds.length
 
   return (
     <div className="screen screen--card">
@@ -31,16 +36,19 @@ export function ResultScreen() {
             O tempo acabou antes que o espião fosse descoberto.
           </p>
         ) : null}
-        {round.outcome === 'wrong-accusation' && accused ? (
+        {round.outcome === 'wrong-accusation' && accused.length > 0 ? (
           <p className="result__outcome">
-            O grupo apontou {accused.name}, mas essa pessoa não era espiã.
+            O grupo apontou {accusedNames}, mas não cumpriu a condição para
+            encontrar os espiões.
           </p>
         ) : null}
         {round.outcome !== 'time' &&
         round.outcome !== 'wrong-accusation' &&
-        accused ? (
+        accused.length > 0 ? (
           <p className="result__outcome">
-            O grupo acertou ao apontar {accused.name}.
+            {foundEverySpy
+              ? `O grupo encontrou todos os espiões ao apontar ${accusedNames}.`
+              : `O grupo encontrou ${correctlyAccused.map((player) => player.name).join(', ')} e, pela regra da mesa, eliminou toda a equipe.`}
           </p>
         ) : null}
         <p className="screen__eyebrow">A palavra era</p>

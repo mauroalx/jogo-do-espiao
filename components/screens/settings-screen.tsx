@@ -74,6 +74,19 @@ export function SettingsScreen() {
 
         <Tile className="setting">
           <Toggle
+            id="one-spy-eliminates-team"
+            labelText="Um espião derruba a equipe"
+            labelA="Precisa encontrar todos"
+            labelB="Um acerto elimina todos"
+            toggled={settings.oneSpyEliminatesTeam}
+            onToggle={(checked) =>
+              updateSettings({ oneSpyEliminatesTeam: checked })
+            }
+          />
+        </Tile>
+
+        <Tile className="setting">
+          <Toggle
             id="spy-hint"
             labelText="Dica para o espião"
             labelA="Sem dica nenhuma"

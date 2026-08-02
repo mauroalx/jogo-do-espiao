@@ -13,9 +13,12 @@ import {
   DEFAULT_SETTINGS,
   MIN_PLAYERS,
   createId,
+  accusationDecision,
+  lastChanceDecision,
   maxSpies,
   pickSpies,
   storage,
+  TIME_EXPIRED_DECISION,
   type Phase,
   type HistoryEntry,
   type Player,
@@ -41,7 +44,7 @@ type GameContextValue = {
   markRevealed: (id: string) => void
   finishReveal: () => void
   beginAccusation: () => void
-  accusePlayer: (playerId: string) => void
+  accusePlayers: (playerIds: string[]) => void
   expireRound: () => void
   resolveLastChance: (correct: boolean) => void
   playAgain: () => void
@@ -132,7 +135,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       spyIds: pickSpies(players, spyCount),
       revealedIds: [],
       spyGuessedWord: null,
-      accusedPlayerId: null,
+      accusedPlayerIds: [],
       winner: null,
       outcome: null,
     })
@@ -157,9 +160,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       const spies = players
         .filter((player) => finishedRound.spyIds.includes(player.id))
         .map((player) => player.name)
-      const accused =
-        players.find((player) => player.id === finishedRound.accusedPlayerId)
-          ?.name ?? null
+      const accused = players
+        .filter((player) => finishedRound.accusedPlayerIds.includes(player.id))
+        .map((player) => player.name)
       setHistory((current) => [
         {
           id: finishedRound.id,
@@ -180,13 +183,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const beginAccusation = useCallback(() => setPhase('accusation'), [])
 
-  const accusePlayer = useCallback(
-    (playerId: string) => {
-      if (!round || !players.some((player) => player.id === playerId)) return
-      const foundSpy = round.spyIds.includes(playerId)
-      const accusedRound: Round = { ...round, accusedPlayerId: playerId }
+  const accusePlayers = useCallback(
+    (playerIds: string[]) => {
+      if (
+        !round ||
+        playerIds.length !== round.spyIds.length ||
+        playerIds.some((id) => !players.some((player) => player.id === id))
+      ) return
+      const decision = accusationDecision(
+        round.spyIds,
+        playerIds,
+        settings.oneSpyEliminatesTeam,
+        settings.spyLastChance,
+      )
+      const accusedRound: Round = { ...round, accusedPlayerIds: playerIds }
 
-      if (foundSpy && settings.spyLastChance) {
+      if (decision.needsLastChance) {
         setRound(accusedRound)
         setPhase('guess')
         return
@@ -194,22 +206,28 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       const finishedRound: Round = {
         ...accusedRound,
-        winner: foundSpy ? 'players' : 'spies',
-        outcome: foundSpy ? 'discovered' : 'wrong-accusation',
+        winner: decision.winner,
+        outcome: decision.outcome,
       }
       setRound(finishedRound)
       saveResult(finishedRound)
       setPhase('result')
     },
-    [players, round, saveResult, settings.spyLastChance],
+    [
+      players,
+      round,
+      saveResult,
+      settings.oneSpyEliminatesTeam,
+      settings.spyLastChance,
+    ],
   )
 
   const expireRound = useCallback(() => {
     if (!round) return
     const finishedRound: Round = {
       ...round,
-      winner: 'spies',
-      outcome: 'time',
+      winner: TIME_EXPIRED_DECISION.winner,
+      outcome: TIME_EXPIRED_DECISION.outcome,
     }
     setRound(finishedRound)
     saveResult(finishedRound)
@@ -219,11 +237,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const resolveLastChance = useCallback(
     (correct: boolean) => {
       if (!round) return
+      const decision = lastChanceDecision(correct)
       const finishedRound: Round = {
         ...round,
         spyGuessedWord: correct,
-        winner: correct ? 'spies' : 'players',
-        outcome: correct ? 'guessed' : 'missed',
+        winner: decision.winner,
+        outcome: decision.outcome,
       }
       setRound(finishedRound)
       saveResult(finishedRound)
@@ -265,7 +284,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       markRevealed,
       finishReveal,
       beginAccusation,
-      accusePlayer,
+      accusePlayers,
       expireRound,
       resolveLastChance,
       playAgain,
@@ -274,7 +293,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     [
       addPlayer,
       backToLobby,
-      accusePlayer,
+      accusePlayers,
       expireRound,
       beginAccusation,
       finishReveal,

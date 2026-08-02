@@ -13,6 +13,7 @@ export type Settings = {
   enabledCategories: string[]
   timerMinutes: number
   spyLastChance: boolean
+  oneSpyEliminatesTeam: boolean
 }
 
 export type Round = {
@@ -21,7 +22,7 @@ export type Round = {
   spyIds: string[]
   revealedIds: string[]
   spyGuessedWord: boolean | null
-  accusedPlayerId: string | null
+  accusedPlayerIds: string[]
   winner: 'spies' | 'players' | null
   outcome:
     | 'time'
@@ -38,10 +39,16 @@ export type HistoryEntry = {
   category: string
   word: string
   spies: string[]
-  accused: string | null
+  accused: string[]
   spyGuessedWord: boolean | null
   winner: 'spies' | 'players'
   outcome: 'time' | 'discovered' | 'wrong-accusation' | 'guessed' | 'missed'
+}
+
+type StoredHistoryEntry = Omit<HistoryEntry, 'accused' | 'winner' | 'outcome'> & {
+  accused?: string | string[]
+  winner?: HistoryEntry['winner']
+  outcome?: HistoryEntry['outcome']
 }
 
 export type Phase =
@@ -61,6 +68,7 @@ export const DEFAULT_SETTINGS: Settings = {
   enabledCategories: [],
   timerMinutes: 8,
   spyLastChance: false,
+  oneSpyEliminatesTeam: false,
 }
 
 export const MIN_PLAYERS = 3
@@ -82,6 +90,70 @@ export function pickSpies(players: Player[], count: number): string[] {
   return shuffle(players)
     .slice(0, Math.min(count, Math.max(1, players.length - 1)))
     .map((player) => player.id)
+}
+
+/** Avalia uma acusação já confirmada, sem revelar papéis à interface. */
+export function accusationFoundSpies(
+  spyIds: string[],
+  accusedPlayerIds: string[],
+  oneSpyEliminatesTeam: boolean,
+) {
+  if (spyIds.length === 0 || accusedPlayerIds.length !== spyIds.length) {
+    return false
+  }
+  const spies = new Set(spyIds)
+  const accused = new Set(accusedPlayerIds)
+  if (accused.size !== accusedPlayerIds.length) return false
+  if (oneSpyEliminatesTeam) {
+    return accusedPlayerIds.some((id) => spies.has(id))
+  }
+  return accusedPlayerIds.every((id) => spies.has(id))
+}
+
+export type RoundDecision = Pick<Round, 'winner' | 'outcome'> & {
+  needsLastChance: boolean
+}
+
+export function accusationDecision(
+  spyIds: string[],
+  accusedPlayerIds: string[],
+  oneSpyEliminatesTeam: boolean,
+  spyLastChance: boolean,
+): RoundDecision {
+  const found = accusationFoundSpies(
+    spyIds,
+    accusedPlayerIds,
+    oneSpyEliminatesTeam,
+  )
+  if (!found) {
+    return {
+      winner: 'spies',
+      outcome: 'wrong-accusation',
+      needsLastChance: false,
+    }
+  }
+  if (spyLastChance) {
+    return { winner: null, outcome: null, needsLastChance: true }
+  }
+  return {
+    winner: 'players',
+    outcome: 'discovered',
+    needsLastChance: false,
+  }
+}
+
+export function lastChanceDecision(correct: boolean): RoundDecision {
+  return {
+    winner: correct ? 'spies' : 'players',
+    outcome: correct ? 'guessed' : 'missed',
+    needsLastChance: false,
+  }
+}
+
+export const TIME_EXPIRED_DECISION: RoundDecision = {
+  winner: 'spies',
+  outcome: 'time',
+  needsLastChance: false,
 }
 
 export function createId() {
@@ -116,6 +188,29 @@ function write(key: string, value: unknown) {
   }
 }
 
+export function normalizeHistory(
+  entries: StoredHistoryEntry[],
+): HistoryEntry[] {
+  return entries.map((entry) => ({
+    ...entry,
+    winner:
+      entry.winner ??
+      (entry.spyGuessedWord === true ? 'spies' : 'players'),
+    outcome:
+      entry.outcome ??
+      (entry.spyGuessedWord === true
+        ? 'guessed'
+        : entry.spyGuessedWord === false
+          ? 'missed'
+          : 'discovered'),
+    accused: Array.isArray(entry.accused)
+      ? entry.accused
+      : entry.accused
+        ? [entry.accused]
+        : [],
+  }))
+}
+
 export const storage = {
   loadPlayers: () => read<Player[]>(KEYS.players, []),
   savePlayers: (players: Player[]) => write(KEYS.players, players),
@@ -127,19 +222,6 @@ export const storage = {
   loadUsed: () => read<string[]>(KEYS.used, []),
   saveUsed: (used: string[]) => write(KEYS.used, used),
   loadHistory: () =>
-    read<HistoryEntry[]>(KEYS.history, []).map((entry) => ({
-      ...entry,
-      winner:
-        entry.winner ??
-        (entry.spyGuessedWord === true ? 'spies' : 'players'),
-      outcome:
-        entry.outcome ??
-        (entry.spyGuessedWord === true
-          ? 'guessed'
-          : entry.spyGuessedWord === false
-            ? 'missed'
-            : 'discovered'),
-      accused: entry.accused ?? null,
-    })),
+    normalizeHistory(read<StoredHistoryEntry[]>(KEYS.history, [])),
   saveHistory: (history: HistoryEntry[]) => write(KEYS.history, history),
 }

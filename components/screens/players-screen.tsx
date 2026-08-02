@@ -225,8 +225,8 @@ export function PlayersScreen() {
                     <p>
                       {entry.category} · {entry.spies.join(', ')}
                     </p>
-                    {entry.accused ? (
-                      <p>Apontado pelo grupo: {entry.accused}</p>
+                    {entry.accused.length > 0 ? (
+                      <p>Apontados pelo grupo: {entry.accused.join(', ')}</p>
                     ) : null}
                   </div>
                   <Tag
