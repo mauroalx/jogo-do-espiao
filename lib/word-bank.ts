@@ -65,9 +65,14 @@ export function drawWord(
   const availableByCategory = categories.map((category) => ({
     category,
     words: category.words.filter((w) => !used.has(wordKey(category.name, w.w))),
+    usedCount: usedKeys.filter((key) =>
+      key.startsWith(`${category.name}::`),
+    ).length,
   }))
 
-  let candidates = availableByCategory.filter((entry) => entry.words.length > 0)
+  const available = availableByCategory.filter((entry) => entry.words.length > 0)
+  const minimumUsed = Math.min(...available.map((entry) => entry.usedCount))
+  let candidates = available.filter((entry) => entry.usedCount === minimumUsed)
   let nextUsedKeys = usedKeys
 
   // Estoque esgotado: recomeça mantendo apenas o histórico de outras categorias.
@@ -77,6 +82,7 @@ export function drawWord(
     candidates = categories.map((category) => ({
       category,
       words: category.words,
+      usedCount: 0,
     }))
   }
 

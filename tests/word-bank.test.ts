@@ -1,15 +1,29 @@
 import { describe, expect, it } from 'vitest'
-import { getBank } from '../lib/word-bank'
+import { drawWord, getBank } from '../lib/word-bank'
 
 describe('banco de palavras', () => {
   const bank = getBank()
 
-  it('possui 12 categorias, 480 palavras e 960 dicas', () => {
-    expect(bank).toHaveLength(12)
-    expect(bank.flatMap((category) => category.words)).toHaveLength(480)
+  it('possui 14 categorias, 560 palavras e 1.120 dicas', () => {
+    expect(bank).toHaveLength(14)
+    expect(bank.flatMap((category) => category.words)).toHaveLength(560)
     expect(
       bank.flatMap((category) => category.words.flatMap((word) => word.h)),
-    ).toHaveLength(960)
+    ).toHaveLength(1120)
+  })
+
+  it('equilibra as categorias ativas ao longo das rodadas', () => {
+    const enabled = ['Filmes', 'Séries', 'Novelas']
+    let used: string[] = []
+    const counts = new Map(enabled.map((category) => [category, 0]))
+
+    for (let round = 0; round < 12; round += 1) {
+      const result = drawWord(enabled, used)
+      used = result.usedKeys
+      counts.set(result.draw.category, (counts.get(result.draw.category) ?? 0) + 1)
+    }
+
+    expect([...counts.values()]).toEqual([4, 4, 4])
   })
 
   it('mantém 40 palavras válidas em cada categoria', () => {
