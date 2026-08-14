@@ -4,21 +4,21 @@ import { getBank } from '../lib/word-bank'
 describe('banco de palavras', () => {
   const bank = getBank()
 
-  it('possui 12 categorias, 360 palavras e 720 dicas', () => {
+  it('possui 12 categorias, 480 palavras e 960 dicas', () => {
     expect(bank).toHaveLength(12)
-    expect(bank.flatMap((category) => category.words)).toHaveLength(360)
+    expect(bank.flatMap((category) => category.words)).toHaveLength(480)
     expect(
       bank.flatMap((category) => category.words.flatMap((word) => word.h)),
-    ).toHaveLength(720)
+    ).toHaveLength(960)
   })
 
-  it('mantém 30 palavras válidas em cada categoria', () => {
+  it('mantém 40 palavras válidas em cada categoria', () => {
     for (const category of bank) {
-      expect(category.words, category.name).toHaveLength(30)
+      expect(category.words, category.name).toHaveLength(40)
       const normalized = category.words.map((word) =>
         word.w.trim().toLocaleLowerCase('pt-BR'),
       )
-      expect(new Set(normalized).size, category.name).toBe(30)
+      expect(new Set(normalized).size, category.name).toBe(40)
     }
   })
 

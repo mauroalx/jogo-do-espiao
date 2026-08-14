@@ -5,6 +5,7 @@ import {
   accusationFoundSpies,
   lastChanceDecision,
   normalizeHistory,
+  shouldRevealSpyHint,
 } from '../lib/game'
 
 describe('accusationFoundSpies', () => {
@@ -106,5 +107,16 @@ describe('normalizeHistory', () => {
     expect(entry.accused).toEqual([])
     expect(entry.winner).toBe('players')
     expect(entry.outcome).toBe('discovered')
+  })
+})
+
+describe('dica no fim do cronômetro', () => {
+  it('aparece somente nos 60 segundos finais quando o espião recebeu dica', () => {
+    expect(shouldRevealSpyHint(61, true, 'contexto')).toBe(false)
+    expect(shouldRevealSpyHint(60, true, 'contexto')).toBe(true)
+    expect(shouldRevealSpyHint(1, true, 'contexto')).toBe(true)
+    expect(shouldRevealSpyHint(0, true, 'contexto')).toBe(false)
+    expect(shouldRevealSpyHint(30, false, 'contexto')).toBe(false)
+    expect(shouldRevealSpyHint(30, true, null)).toBe(false)
   })
 })

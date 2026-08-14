@@ -388,6 +388,26 @@ body {
   text-wrap: pretty;
 }
 
+.timer__hint {
+  display: flex;
+  flex-direction: column;
+  gap: spacing.$spacing-03;
+  width: 100%;
+  padding: spacing.$spacing-05;
+  text-align: left;
+  border-left: 3px solid var(--cds-support-warning);
+  background: var(--cds-layer-02);
+
+  strong {
+    @include type.type-style('heading-03');
+  }
+
+  p:last-child {
+    @include type.type-style('helper-text-01');
+    color: var(--cds-text-secondary);
+  }
+}
+
 .timer__actions {
   width: 100%;
   margin-top: spacing.$spacing-03;

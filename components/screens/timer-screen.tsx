@@ -5,6 +5,7 @@ import { Button, ProgressBar, Stack, Tag, Tile } from '@carbon/react'
 import { Add, Pause, Play, UserFollow } from '@carbon/icons-react'
 import { useGame } from '@/components/game-provider'
 import { tone, vibrate } from '@/lib/feedback'
+import { shouldRevealSpyHint } from '@/lib/game'
 
 function format(totalSeconds: number) {
   const safe = Math.max(0, totalSeconds)
@@ -19,6 +20,7 @@ export function TimerScreen() {
   const [total, setTotal] = useState(initial)
   const [left, setLeft] = useState(initial)
   const [running, setRunning] = useState(true)
+  const [hintRevealed, setHintRevealed] = useState(false)
   const alerted = useRef(false)
   const endsAt = useRef(Date.now() + initial * 1000)
 
@@ -43,6 +45,14 @@ export function TimerScreen() {
   }, [running])
 
   useEffect(() => {
+    if (
+      shouldRevealSpyHint(left, settings.spyGetsHint, round?.draw.hint) &&
+      !hintRevealed
+    ) {
+      setHintRevealed(true)
+      tone(520, 0.14, 0.035)
+      vibrate([40, 40, 40])
+    }
     if (left > 0 && left <= 10) {
       tone(left <= 3 ? 660 : 440, 0.05, 0.025)
       vibrate(20)
@@ -54,7 +64,13 @@ export function TimerScreen() {
       vibrate([200, 100, 200])
       expireRound()
     }
-  }, [expireRound, left])
+  }, [
+    expireRound,
+    hintRevealed,
+    left,
+    round?.draw.hint,
+    settings.spyGetsHint,
+  ])
 
   const addMinute = () => {
     if (running) endsAt.current += 60_000
@@ -100,6 +116,17 @@ export function TimerScreen() {
           Cada um diz uma palavra ligada ao segredo. Depois votem em quem parece
           ser o espião.
         </p>
+
+        {hintRevealed && round?.draw.hint ? (
+          <div className="timer__hint" role="status" aria-live="polite">
+            <p className="screen__eyebrow">
+              Dica recebida{' '}
+              {round.spyIds.length === 1 ? 'pelo espião' : 'pelos espiões'}
+            </p>
+            <strong>{round.draw.hint}</strong>
+            <p>Agora todos podem usar essa informação na discussão.</p>
+          </div>
+        ) : null}
 
         <Stack gap={3} className="timer__actions">
           <div className="timer__row">

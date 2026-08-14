@@ -156,6 +156,14 @@ export const TIME_EXPIRED_DECISION: RoundDecision = {
   needsLastChance: false,
 }
 
+export function shouldRevealSpyHint(
+  secondsLeft: number,
+  spyGetsHint: boolean,
+  hint: string | null | undefined,
+) {
+  return secondsLeft > 0 && secondsLeft <= 60 && spyGetsHint && Boolean(hint)
+}
+
 export function createId() {
   return Math.random().toString(36).slice(2, 10)
 }
