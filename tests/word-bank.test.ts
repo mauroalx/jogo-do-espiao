@@ -4,12 +4,15 @@ import { drawWord, getBank } from '../lib/word-bank'
 describe('banco de palavras', () => {
   const bank = getBank()
 
-  it('possui 14 categorias, 560 palavras e 1.120 dicas', () => {
-    expect(bank).toHaveLength(14)
-    expect(bank.flatMap((category) => category.words)).toHaveLength(560)
+  it('possui 15 categorias, 600 palavras e 1.200 dicas', () => {
+    expect(bank).toHaveLength(15)
+    expect(bank.flatMap((category) => category.words)).toHaveLength(600)
     expect(
       bank.flatMap((category) => category.words.flatMap((word) => word.h)),
-    ).toHaveLength(1120)
+    ).toHaveLength(1200)
+    expect(bank.map((category) => category.name)).toEqual(
+      expect.arrayContaining(['Novelas', 'História do Brasil', 'Atualidades']),
+    )
   })
 
   it('equilibra as categorias ativas ao longo das rodadas', () => {
