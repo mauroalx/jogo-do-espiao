@@ -132,7 +132,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setRound({
       id: createId(),
       draw,
-      spyIds: pickSpies(players, spyCount),
+      spyIds: pickSpies(players, spyCount, history),
       revealedIds: [],
       spyGuessedWord: null,
       accusedPlayerIds: [],
@@ -140,7 +140,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       outcome: null,
     })
     setPhase('reveal')
-  }, [players, settings.enabledCategories, settings.spyCount])
+  }, [history, players, settings.enabledCategories, settings.spyCount])
 
   const markRevealed = useCallback((id: string) => {
     setRound((current) =>

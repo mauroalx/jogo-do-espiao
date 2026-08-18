@@ -77,19 +77,103 @@ export function maxSpies(playerCount: number) {
   return Math.max(1, Math.floor((playerCount - 1) / 2))
 }
 
-export function shuffle<T>(items: T[]): T[] {
+export function shuffle<T>(items: T[], random: () => number = Math.random): T[] {
   const copy = [...items]
   for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1))
+    const j = Math.floor(random() * (i + 1))
     ;[copy[i], copy[j]] = [copy[j], copy[i]]
   }
   return copy
 }
 
-export function pickSpies(players: Player[], count: number): string[] {
-  return shuffle(players)
-    .slice(0, Math.min(count, Math.max(1, players.length - 1)))
-    .map((player) => player.id)
+/** Temperatura alta = mais surpresa; baixa = mais “vez de quem ainda não foi”. */
+const SPY_PICK_TEMPERATURE = 2
+const LAST_SPY_FACTOR = 0.5
+
+function playerNameKey(name: string) {
+  return name.trim().toLocaleLowerCase('pt-BR')
+}
+
+function pickWeighted<T>(
+  items: T[],
+  weights: number[],
+  random: () => number,
+): T {
+  const total = weights.reduce((sum, weight) => sum + Math.max(0, weight), 0)
+  if (items.length === 0) {
+    throw new Error('pickWeighted precisa de candidatos')
+  }
+  if (total <= 0) {
+    return items[Math.floor(random() * items.length)] ?? items[0]
+  }
+  let cursor = random() * total
+  for (let index = 0; index < items.length; index += 1) {
+    cursor -= Math.max(0, weights[index] ?? 0)
+    if (cursor <= 0) return items[index] as T
+  }
+  return items[items.length - 1] as T
+}
+
+/**
+ * Conta quantas vezes cada jogador atual foi espião no histórico da mesa.
+ */
+export function spyTurnCounts(
+  players: Player[],
+  history: Array<Pick<HistoryEntry, 'spies'>>,
+) {
+  const counts = new Map(players.map((player) => [player.id, 0]))
+  const byName = new Map(
+    players.map((player) => [playerNameKey(player.name), player.id]),
+  )
+
+  for (const entry of history) {
+    for (const spyName of entry.spies) {
+      const id = byName.get(playerNameKey(spyName))
+      if (!id) continue
+      counts.set(id, (counts.get(id) ?? 0) + 1)
+    }
+  }
+
+  return counts
+}
+
+/**
+ * Sorteia espiões equilibrando o histórico sem rodízio previsível:
+ * quem foi menos vezes pesa mais, mas quem já saiu ainda pode repetir.
+ */
+export function pickSpies(
+  players: Player[],
+  count: number,
+  history: Array<Pick<HistoryEntry, 'spies'>> = [],
+  random: () => number = Math.random,
+): string[] {
+  const target = Math.min(count, Math.max(1, players.length - 1))
+  const counts = spyTurnCounts(players, history)
+  const lastSpies = new Set(
+    (history[0]?.spies ?? [])
+      .map((name) =>
+        players.find(
+          (player) => playerNameKey(player.name) === playerNameKey(name),
+        )?.id,
+      )
+      .filter((id): id is string => Boolean(id)),
+  )
+  const picked: string[] = []
+
+  for (let step = 0; step < target; step += 1) {
+    const candidates = players.filter((player) => !picked.includes(player.id))
+    const weights = candidates.map((player) => {
+      const turns = counts.get(player.id) ?? 0
+      let weight = Math.exp(-turns / SPY_PICK_TEMPERATURE)
+      if (lastSpies.has(player.id)) weight *= LAST_SPY_FACTOR
+      return weight * (0.85 + random() * 0.3)
+    })
+    const chosen = pickWeighted(candidates, weights, random)
+    picked.push(chosen.id)
+    counts.set(chosen.id, (counts.get(chosen.id) ?? 0) + 1)
+  }
+
+  return picked
 }
 
 /** Avalia uma acusação já confirmada, sem revelar papéis à interface. */

@@ -5,7 +5,9 @@ import {
   accusationFoundSpies,
   lastChanceDecision,
   normalizeHistory,
+  pickSpies,
   shouldRevealSpyHint,
+  spyTurnCounts,
 } from '../lib/game'
 
 describe('accusationFoundSpies', () => {
@@ -118,5 +120,100 @@ describe('dica no fim do cronômetro', () => {
     expect(shouldRevealSpyHint(0, true, 'contexto')).toBe(false)
     expect(shouldRevealSpyHint(30, false, 'contexto')).toBe(false)
     expect(shouldRevealSpyHint(30, true, null)).toBe(false)
+  })
+})
+
+const table = [
+  { id: 'mauro', name: 'Mauro' },
+  { id: 'joao', name: 'João' },
+  { id: 'jose', name: 'José' },
+  { id: 'jeniffer', name: 'Jeniffer' },
+]
+
+describe('pickSpies', () => {
+  it('devolve a quantidade pedida, sem repetir na mesma rodada', () => {
+    const spies = pickSpies(table, 2, [])
+    expect(spies).toHaveLength(2)
+    expect(new Set(spies).size).toBe(2)
+    expect(spies.every((id) => table.some((player) => player.id === id))).toBe(
+      true,
+    )
+  })
+
+  it('nunca transforma a mesa inteira em espião', () => {
+    expect(pickSpies(table, 8, [])).toHaveLength(3)
+  })
+
+  it('não torna óbvio quem ainda não foi: quem já saiu ainda pode repetir', () => {
+    const history = [
+      { spies: ['José'] },
+      { spies: ['João'] },
+      { spies: ['José'] },
+      { spies: ['João'] },
+    ]
+    const samples = Array.from({ length: 4000 }, () =>
+      pickSpies(table, 1, history)[0],
+    )
+    const alreadyWent =
+      samples.filter((id) => id === 'joao' || id === 'jose').length / samples.length
+    const notYet =
+      samples.filter((id) => id === 'jeniffer' || id === 'mauro').length /
+      samples.length
+
+    expect(notYet).toBeGreaterThan(0.55)
+    expect(alreadyWent).toBeGreaterThan(0.18)
+    expect(alreadyWent).toBeLessThan(0.45)
+  })
+
+  it('equilibra a mesa em 10 rodadas melhor do que o acaso puro', () => {
+    const spreads: number[] = []
+    const neverSpy: number[] = []
+
+    for (let session = 0; session < 500; session += 1) {
+      const history: { spies: string[] }[] = []
+      const counts = new Map(table.map((player) => [player.name, 0]))
+
+      for (let round = 0; round < 10; round += 1) {
+        const [spyId] = pickSpies(table, 1, history)
+        const spy = table.find((player) => player.id === spyId)
+        if (!spy) throw new Error('espião inválido')
+        counts.set(spy.name, (counts.get(spy.name) ?? 0) + 1)
+        history.unshift({ spies: [spy.name] })
+      }
+
+      const values = [...counts.values()]
+      spreads.push(Math.max(...values) - Math.min(...values))
+      neverSpy.push(values.filter((value) => value === 0).length)
+    }
+
+    const meanSpread = spreads.reduce((sum, value) => sum + value, 0) / spreads.length
+    const meanNever =
+      neverSpy.reduce((sum, value) => sum + value, 0) / neverSpy.length
+
+    expect(meanSpread).toBeLessThan(2.4)
+    expect(meanNever).toBeLessThan(0.15)
+  })
+
+  it('quem entra no meio da mesa pesa mais, mas não vira o próximo automático', () => {
+    const withNewcomer = [...table, { id: 'paulo', name: 'Paulo' }]
+    const history = [
+      { spies: ['Jeniffer'] },
+      { spies: ['José'] },
+      { spies: ['João'] },
+      { spies: ['Mauro'] },
+      { spies: ['José'] },
+      { spies: ['João'] },
+      { spies: ['Mauro'] },
+      { spies: ['Jeniffer'] },
+    ]
+    expect(spyTurnCounts(withNewcomer, history).get('paulo')).toBe(0)
+
+    const samples = Array.from({ length: 3000 }, () =>
+      pickSpies(withNewcomer, 1, history)[0],
+    )
+    const pauloShare =
+      samples.filter((id) => id === 'paulo').length / samples.length
+    expect(pauloShare).toBeGreaterThan(0.28)
+    expect(pauloShare).toBeLessThan(0.52)
   })
 })
