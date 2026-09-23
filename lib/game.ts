@@ -20,6 +20,7 @@ export type Round = {
   id: string
   draw: Draw
   spyIds: string[]
+  starterId: string
   revealedIds: string[]
   spyGuessedWord: boolean | null
   accusedPlayerIds: string[]
@@ -39,16 +40,21 @@ export type HistoryEntry = {
   category: string
   word: string
   spies: string[]
+  starter: string | null
   accused: string[]
   spyGuessedWord: boolean | null
   winner: 'spies' | 'players'
   outcome: 'time' | 'discovered' | 'wrong-accusation' | 'guessed' | 'missed'
 }
 
-type StoredHistoryEntry = Omit<HistoryEntry, 'accused' | 'winner' | 'outcome'> & {
+type StoredHistoryEntry = Omit<
+  HistoryEntry,
+  'accused' | 'winner' | 'outcome' | 'starter'
+> & {
   accused?: string | string[]
   winner?: HistoryEntry['winner']
   outcome?: HistoryEntry['outcome']
+  starter?: string | null
 }
 
 export type Phase =
@@ -89,6 +95,8 @@ export function shuffle<T>(items: T[], random: () => number = Math.random): T[] 
 /** Temperatura alta = mais surpresa; baixa = mais “vez de quem ainda não foi”. */
 const SPY_PICK_TEMPERATURE = 2
 const LAST_SPY_FACTOR = 0.5
+const STARTER_PICK_TEMPERATURE = 1.4
+const LAST_STARTER_FACTOR = 0.15
 
 function playerNameKey(name: string) {
   return name.trim().toLocaleLowerCase('pt-BR')
@@ -174,6 +182,58 @@ export function pickSpies(
   }
 
   return picked
+}
+
+/**
+ * Conta quantas vezes cada jogador atual começou falando no histórico da mesa.
+ */
+export function starterTurnCounts(
+  players: Player[],
+  history: Array<Pick<HistoryEntry, 'starter'>>,
+) {
+  const counts = new Map(players.map((player) => [player.id, 0]))
+  const byName = new Map(
+    players.map((player) => [playerNameKey(player.name), player.id]),
+  )
+
+  for (const entry of history) {
+    if (!entry.starter) continue
+    const id = byName.get(playerNameKey(entry.starter))
+    if (!id) continue
+    counts.set(id, (counts.get(id) ?? 0) + 1)
+  }
+
+  return counts
+}
+
+/**
+ * Sorteia quem começa falando: prioriza quem falou menos e evita repetir a última vez.
+ */
+export function pickStarter(
+  players: Player[],
+  history: Array<Pick<HistoryEntry, 'starter'>> = [],
+  random: () => number = Math.random,
+): string {
+  if (players.length === 0) {
+    throw new Error('pickStarter precisa de jogadores')
+  }
+  const counts = starterTurnCounts(players, history)
+  const lastStarterName = history.find((entry) => entry.starter)?.starter
+  const lastStarterId = lastStarterName
+    ? players.find(
+        (player) =>
+          playerNameKey(player.name) === playerNameKey(lastStarterName),
+      )?.id
+    : undefined
+
+  const weights = players.map((player) => {
+    const turns = counts.get(player.id) ?? 0
+    let weight = Math.exp(-turns / STARTER_PICK_TEMPERATURE)
+    if (player.id === lastStarterId) weight *= LAST_STARTER_FACTOR
+    return weight * (0.85 + random() * 0.3)
+  })
+
+  return pickWeighted(players, weights, random).id
 }
 
 /** Avalia uma acusação já confirmada, sem revelar papéis à interface. */
@@ -285,6 +345,7 @@ export function normalizeHistory(
 ): HistoryEntry[] {
   return entries.map((entry) => ({
     ...entry,
+    starter: entry.starter ?? null,
     winner:
       entry.winner ??
       (entry.spyGuessedWord === true ? 'spies' : 'players'),

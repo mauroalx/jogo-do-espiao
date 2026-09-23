@@ -6,6 +6,7 @@ import {
   lastChanceDecision,
   normalizeHistory,
   pickSpies,
+  pickStarter,
   shouldRevealSpyHint,
   spyTurnCounts,
 } from '../lib/game'
@@ -107,6 +108,7 @@ describe('normalizeHistory', () => {
       },
     ])
     expect(entry.accused).toEqual([])
+    expect(entry.starter).toBeNull()
     expect(entry.winner).toBe('players')
     expect(entry.outcome).toBe('discovered')
   })
@@ -215,5 +217,51 @@ describe('pickSpies', () => {
       samples.filter((id) => id === 'paulo').length / samples.length
     expect(pauloShare).toBeGreaterThan(0.28)
     expect(pauloShare).toBeLessThan(0.52)
+  })
+})
+
+describe('pickStarter', () => {
+  it('evita repetir quem acabou de começar', () => {
+    const history = [
+      { starter: 'José' },
+      { starter: 'João' },
+      { starter: 'Mauro' },
+    ]
+    const samples = Array.from({ length: 3000 }, () =>
+      pickStarter(table, history),
+    )
+    const lastShare =
+      samples.filter((id) => id === 'jose').length / samples.length
+    expect(lastShare).toBeLessThan(0.12)
+  })
+
+  it('equilibra quem começa ao longo das rodadas', () => {
+    const spreads: number[] = []
+    const neverStart: number[] = []
+
+    for (let session = 0; session < 400; session += 1) {
+      const history: { starter: string }[] = []
+      const counts = new Map(table.map((player) => [player.id, 0]))
+
+      for (let round = 0; round < 12; round += 1) {
+        const starterId = pickStarter(table, history)
+        counts.set(starterId, (counts.get(starterId) ?? 0) + 1)
+        const starter = table.find((player) => player.id === starterId)
+        if (!starter) throw new Error('starter inválido')
+        history.unshift({ starter: starter.name })
+      }
+
+      const values = [...counts.values()]
+      spreads.push(Math.max(...values) - Math.min(...values))
+      neverStart.push(values.filter((value) => value === 0).length)
+    }
+
+    const meanSpread =
+      spreads.reduce((sum, value) => sum + value, 0) / spreads.length
+    const meanNever =
+      neverStart.reduce((sum, value) => sum + value, 0) / neverStart.length
+
+    expect(meanSpread).toBeLessThan(2.6)
+    expect(meanNever).toBeLessThan(0.08)
   })
 })

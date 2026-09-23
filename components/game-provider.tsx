@@ -17,6 +17,7 @@ import {
   lastChanceDecision,
   maxSpies,
   pickSpies,
+  pickStarter,
   storage,
   TIME_EXPIRED_DECISION,
   type Phase,
@@ -133,6 +134,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       id: createId(),
       draw,
       spyIds: pickSpies(players, spyCount, history),
+      starterId: pickStarter(players, history),
       revealedIds: [],
       spyGuessedWord: null,
       accusedPlayerIds: [],
@@ -163,6 +165,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       const accused = players
         .filter((player) => finishedRound.accusedPlayerIds.includes(player.id))
         .map((player) => player.name)
+      const starter =
+        players.find((player) => player.id === finishedRound.starterId)?.name ??
+        null
       setHistory((current) => [
         {
           id: finishedRound.id,
@@ -170,6 +175,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           category: finishedRound.draw.category,
           word: finishedRound.draw.word,
           spies,
+          starter,
           accused,
           spyGuessedWord: finishedRound.spyGuessedWord,
           winner,

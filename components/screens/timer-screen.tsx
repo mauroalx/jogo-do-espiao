@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button, ProgressBar, Stack, Tag, Tile } from '@carbon/react'
-import { Add, Pause, Play, UserFollow } from '@carbon/icons-react'
+import { Add, Pause, Play, Subtract, UserFollow } from '@carbon/icons-react'
 import { useGame } from '@/components/game-provider'
 import { tone, vibrate } from '@/lib/feedback'
 import { shouldRevealSpyHint } from '@/lib/game'
@@ -24,10 +24,7 @@ export function TimerScreen() {
   const alerted = useRef(false)
   const endsAt = useRef(Date.now() + initial * 1000)
 
-  const starter = useMemo(
-    () => players[Math.floor(Math.random() * players.length)],
-    [players],
-  )
+  const starter = players.find((player) => player.id === round?.starterId)
 
   useEffect(() => {
     if (!running) return
@@ -79,6 +76,13 @@ export function TimerScreen() {
     alerted.current = false
   }
 
+  const removeHalfMinute = () => {
+    if (left <= 60) return
+    if (running) endsAt.current -= 30_000
+    setTotal((current) => Math.max(1, current - 30))
+    setLeft((current) => Math.max(0, current - 30))
+  }
+
   const toggleTimer = () => {
     if (running) {
       setLeft(
@@ -110,7 +114,7 @@ export function TimerScreen() {
         />
 
         <p className="timer__starter">
-          Começa falando: <strong>{starter?.name}</strong>
+          Começa falando: <strong>{starter?.name ?? '—'}</strong>
         </p>
         <p className="timer__tip">
           Cada um diz uma palavra ligada ao segredo. Depois votem em quem parece
@@ -141,6 +145,15 @@ export function TimerScreen() {
             </Button>
             <Button kind="tertiary" size="lg" renderIcon={Add} onClick={addMinute}>
               1 min
+            </Button>
+            <Button
+              kind="tertiary"
+              size="lg"
+              renderIcon={Subtract}
+              onClick={removeHalfMinute}
+              disabled={left <= 60}
+            >
+              30 s
             </Button>
           </div>
           <Button
