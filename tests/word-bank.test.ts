@@ -4,19 +4,25 @@ import { drawWord, getBank } from '../lib/word-bank'
 describe('banco de palavras', () => {
   const bank = getBank()
 
-  it('possui 15 categorias, 675 palavras e 1.350 dicas', () => {
-    expect(bank).toHaveLength(15)
-    expect(bank.flatMap((category) => category.words)).toHaveLength(675)
+  it('possui 7 categorias, 315 palavras e 630 dicas', () => {
+    expect(bank).toHaveLength(7)
+    expect(bank.flatMap((category) => category.words)).toHaveLength(315)
     expect(
       bank.flatMap((category) => category.words.flatMap((word) => word.h)),
-    ).toHaveLength(1350)
-    expect(bank.map((category) => category.name)).toEqual(
-      expect.arrayContaining(['Novelas', 'História do Brasil', 'Atualidades']),
-    )
+    ).toHaveLength(630)
+    expect(bank.map((category) => category.name)).toEqual([
+      'Animes',
+      'Objetos do dia a dia',
+      'Séries',
+      'Bandas',
+      'Países e cidades',
+      'Curiosidades',
+      'Conhecimentos gerais',
+    ])
   })
 
   it('equilibra as categorias ativas ao longo das rodadas', () => {
-    const enabled = ['Filmes', 'Séries', 'Novelas']
+    const enabled = ['Animes', 'Séries', 'Bandas']
     let used: string[] = []
     const counts = new Map(enabled.map((category) => [category, 0]))
 
