@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { Button, ProgressBar, Stack, Tag, Tile } from '@carbon/react'
-import { Add, Pause, Play, Subtract, UserFollow } from '@carbon/icons-react'
+import { Add, Pause, Play, Subtract, UserFollow, Shuffle } from '@carbon/icons-react'
 import { useGame } from '@/components/game-provider'
 import { tone, vibrate } from '@/lib/feedback'
 import { shouldRevealSpyHint } from '@/lib/game'
@@ -15,7 +15,7 @@ function format(totalSeconds: number) {
 }
 
 export function TimerScreen() {
-  const { players, settings, round, beginAccusation, expireRound } = useGame()
+  const { players, settings, round, beginAccusation, beginTieBreak, expireRound } = useGame()
   const initial = settings.timerMinutes * 60
   const [total, setTotal] = useState(initial)
   const [left, setLeft] = useState(initial)
@@ -163,6 +163,9 @@ export function TimerScreen() {
             onClick={beginAccusation}
           >
             Apontar espião
+          </Button>
+          <Button size="lg" kind="secondary" renderIcon={Shuffle} onClick={beginTieBreak}>
+            Desempate
           </Button>
         </Stack>
       </Tile>

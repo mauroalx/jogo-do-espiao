@@ -4,25 +4,25 @@ import { drawWord, getBank } from '../lib/word-bank'
 describe('banco de palavras', () => {
   const bank = getBank()
 
-  it('possui 7 categorias, 315 palavras e 630 dicas', () => {
+  it('possui 7 categorias, 350 palavras e 700 dicas', () => {
     expect(bank).toHaveLength(7)
-    expect(bank.flatMap((category) => category.words)).toHaveLength(315)
+    expect(bank.flatMap((category) => category.words)).toHaveLength(350)
     expect(
       bank.flatMap((category) => category.words.flatMap((word) => word.h)),
-    ).toHaveLength(630)
+    ).toHaveLength(700)
     expect(bank.map((category) => category.name)).toEqual([
-      'Animes',
+      'Animações',
+      'Atualidades',
+      'Esportes',
       'Objetos do dia a dia',
-      'Séries',
-      'Bandas',
-      'Países e cidades',
-      'Curiosidades',
       'Conhecimentos gerais',
+      'Profissões',
+      'Área da saúde',
     ])
   })
 
   it('equilibra as categorias ativas ao longo das rodadas', () => {
-    const enabled = ['Animes', 'Séries', 'Bandas']
+    const enabled = ['Animações', 'Atualidades', 'Esportes']
     let used: string[] = []
     const counts = new Map(enabled.map((category) => [category, 0]))
 
@@ -35,14 +35,26 @@ describe('banco de palavras', () => {
     expect([...counts.values()]).toEqual([4, 4, 4])
   })
 
-  it('mantém 45 palavras válidas em cada categoria', () => {
+  it('mantém 50 palavras válidas em cada categoria', () => {
     for (const category of bank) {
-      expect(category.words, category.name).toHaveLength(45)
+      expect(category.words, category.name).toHaveLength(50)
       const normalized = category.words.map((word) =>
         word.w.trim().toLocaleLowerCase('pt-BR'),
       )
-      expect(new Set(normalized).size, category.name).toBe(45)
+      expect(new Set(normalized).size, category.name).toBe(50)
     }
+  })
+
+  it('não repete palavras entre categorias, mesmo com caixa ou acento diferentes', () => {
+    const allWords = bank.flatMap((category) => category.words.map((word) => word.w))
+    const normalized = allWords.map((word) =>
+      word
+        .trim()
+        .toLocaleLowerCase('pt-BR')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, ''),
+    )
+    expect(new Set(normalized).size).toBe(normalized.length)
   })
 
   it('mantém duas dicas distintas e não literais por palavra', () => {
@@ -54,6 +66,10 @@ describe('banco de palavras', () => {
         expect(hints.every(Boolean), `${category.name}: ${word.w}`).toBe(true)
         expect(new Set(hints).size, `${category.name}: ${word.w}`).toBe(2)
         expect(hints).not.toContain(normalizedWord)
+        expect(
+          hints.every((hint) => !/— situação \d+$/.test(hint)),
+          `${category.name}: ${word.w}`,
+        ).toBe(true)
       }
     }
   })

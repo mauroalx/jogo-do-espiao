@@ -45,7 +45,9 @@ type GameContextValue = {
   markRevealed: (id: string) => void
   finishReveal: () => void
   beginAccusation: () => void
+  beginTieBreak: () => void
   accusePlayers: (playerIds: string[]) => void
+  resolveTieBreak: (playerIds: string[]) => void
   expireRound: () => void
   resolveLastChance: (correct: boolean) => void
   playAgain: () => void
@@ -188,6 +190,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   )
 
   const beginAccusation = useCallback(() => setPhase('accusation'), [])
+  const beginTieBreak = useCallback(() => setPhase('tie-break'), [])
 
   const accusePlayers = useCallback(
     (playerIds: string[]) => {
@@ -240,6 +243,30 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setPhase('result')
   }, [round, saveResult])
 
+  const resolveTieBreak = useCallback(
+    (playerIds: string[]) => {
+      if (
+        !round ||
+        playerIds.length !== 2 ||
+        new Set(playerIds).size !== 2 ||
+        playerIds.some((id) => !players.some((player) => player.id === id))
+      ) return
+      const chosenId = playerIds[Math.floor(Math.random() * playerIds.length)]
+      const finishedRound: Round = {
+        ...round,
+        tieBreakCandidateIds: playerIds,
+        tieBreakWinnerId: chosenId,
+        accusedPlayerIds: [chosenId],
+        winner: round.spyIds.includes(chosenId) ? 'players' : 'spies',
+        outcome: 'tie-break',
+      }
+      setRound(finishedRound)
+      saveResult(finishedRound)
+      setPhase('result')
+    },
+    [players, round, saveResult],
+  )
+
   const resolveLastChance = useCallback(
     (correct: boolean) => {
       if (!round) return
@@ -290,7 +317,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       markRevealed,
       finishReveal,
       beginAccusation,
+      beginTieBreak,
       accusePlayers,
+      resolveTieBreak,
       expireRound,
       resolveLastChance,
       playAgain,
@@ -302,6 +331,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       accusePlayers,
       expireRound,
       beginAccusation,
+      beginTieBreak,
       finishReveal,
       history,
       markRevealed,
@@ -313,6 +343,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       renamePlayer,
       round,
       resolveLastChance,
+      resolveTieBreak,
       settings,
       startRound,
       updateSettings,

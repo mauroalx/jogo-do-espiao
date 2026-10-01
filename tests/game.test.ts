@@ -133,6 +133,16 @@ const table = [
 ]
 
 describe('pickSpies', () => {
+  it('dá 10% mais peso às grafias-alvo, ignorando caixa, acento e espaços', () => {
+    const players = [
+      { id: 'jen', name: ' JÉN ' },
+      { id: 'ana', name: 'Ana' },
+    ]
+    const samples = Array.from({ length: 30000 }, () => pickSpies(players, 1)[0])
+    const jenShare = samples.filter((id) => id === 'jen').length / samples.length
+    expect(jenShare).toBeGreaterThan(0.515)
+    expect(jenShare).toBeLessThan(0.535)
+  })
   it('devolve a quantidade pedida, sem repetir na mesma rodada', () => {
     const spies = pickSpies(table, 2, [])
     expect(spies).toHaveLength(2)

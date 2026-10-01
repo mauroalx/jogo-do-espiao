@@ -9,6 +9,7 @@ import { TimerScreen } from '@/components/screens/timer-screen'
 import { ResultScreen } from '@/components/screens/result-screen'
 import { GuessScreen } from '@/components/screens/guess-screen'
 import { AccusationScreen } from '@/components/screens/accusation-screen'
+import { TieBreakScreen } from '@/components/screens/tie-break-screen'
 
 function CurrentScreen() {
   const { ready, phase } = useGame()
@@ -31,6 +32,8 @@ function CurrentScreen() {
       return <TimerScreen />
     case 'accusation':
       return <AccusationScreen />
+    case 'tie-break':
+      return <TieBreakScreen />
     case 'guess':
       return <GuessScreen />
     case 'result':

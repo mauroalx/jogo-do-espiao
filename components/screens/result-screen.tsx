@@ -18,6 +18,7 @@ export function ResultScreen() {
     round.spyIds.includes(player.id),
   )
   const foundEverySpy = correctlyAccused.length === round.spyIds.length
+  const tieBreakWinner = players.find((player) => player.id === round.tieBreakWinnerId)
 
   return (
     <div className="screen screen--card">
@@ -42,8 +43,14 @@ export function ResultScreen() {
             encontrar os espiões.
           </p>
         ) : null}
+        {round.outcome === 'tie-break' && tieBreakWinner ? (
+          <p className="result__outcome">
+            No desempate, o jogo sorteou <strong>{tieBreakWinner.name}</strong> entre os dois empatados.
+          </p>
+        ) : null}
         {round.outcome !== 'time' &&
         round.outcome !== 'wrong-accusation' &&
+        round.outcome !== 'tie-break' &&
         accused.length > 0 ? (
           <p className="result__outcome">
             {foundEverySpy

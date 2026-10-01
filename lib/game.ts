@@ -1,4 +1,4 @@
-import type { Draw } from './word-bank'
+import { WORD_BANK_REVISION, type Draw } from './word-bank'
 
 export type Player = {
   id: string
@@ -23,12 +23,15 @@ export type Round = {
   starterId: string
   revealedIds: string[]
   spyGuessedWord: boolean | null
+  tieBreakCandidateIds?: string[]
+  tieBreakWinnerId?: string | null
   accusedPlayerIds: string[]
   winner: 'spies' | 'players' | null
   outcome:
     | 'time'
     | 'discovered'
     | 'wrong-accusation'
+    | 'tie-break'
     | 'guessed'
     | 'missed'
     | null
@@ -44,7 +47,7 @@ export type HistoryEntry = {
   accused: string[]
   spyGuessedWord: boolean | null
   winner: 'spies' | 'players'
-  outcome: 'time' | 'discovered' | 'wrong-accusation' | 'guessed' | 'missed'
+  outcome: 'time' | 'discovered' | 'wrong-accusation' | 'tie-break' | 'guessed' | 'missed'
 }
 
 type StoredHistoryEntry = Omit<
@@ -64,6 +67,7 @@ export type Phase =
   | 'timer'
   | 'accusation'
   | 'guess'
+  | 'tie-break'
   | 'result'
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -99,7 +103,27 @@ const STARTER_PICK_TEMPERATURE = 1.4
 const LAST_STARTER_FACTOR = 0.15
 
 function playerNameKey(name: string) {
-  return name.trim().toLocaleLowerCase('pt-BR')
+  return name
+    .trim()
+    .toLocaleLowerCase('pt-BR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '')
+}
+
+const BIASED_SPY_NAME_KEYS = new Set([
+  'jen',
+  'jennifer',
+  'jenifer',
+  'adrielle',
+  'adriele',
+])
+const BIASED_SPY_WEIGHT = 1.1
+
+function spyNameWeight(name: string) {
+  return BIASED_SPY_NAME_KEYS.has(playerNameKey(name))
+    ? BIASED_SPY_WEIGHT
+    : 1
 }
 
 function pickWeighted<T>(
@@ -174,7 +198,7 @@ export function pickSpies(
       const turns = counts.get(player.id) ?? 0
       let weight = Math.exp(-turns / SPY_PICK_TEMPERATURE)
       if (lastSpies.has(player.id)) weight *= LAST_SPY_FACTOR
-      return weight * (0.85 + random() * 0.3)
+      return weight * spyNameWeight(player.name) * (0.85 + random() * 0.3)
     })
     const chosen = pickWeighted(candidates, weights, random)
     picked.push(chosen.id)
@@ -319,6 +343,7 @@ const KEYS = {
   settings: 'espiao:settings',
   used: 'espiao:used-words',
   history: 'espiao:history',
+  wordBankRevision: 'espiao:word-bank-revision',
 } as const
 
 function read<T>(key: string, fallback: T): T {
@@ -372,7 +397,18 @@ export const storage = {
     ...read<Partial<Settings>>(KEYS.settings, {}),
   }),
   saveSettings: (settings: Settings) => write(KEYS.settings, settings),
-  loadUsed: () => read<string[]>(KEYS.used, []),
+  loadUsed: () => {
+    // O banco mudou por completo: descarta somente a lista antiga de palavras
+    // já sorteadas, sem apagar jogadores, regras nem histórico da mesa.
+    if (typeof window !== 'undefined') {
+      if (window.localStorage.getItem(KEYS.wordBankRevision) !== WORD_BANK_REVISION) {
+        window.localStorage.removeItem(KEYS.used)
+        window.localStorage.setItem(KEYS.wordBankRevision, WORD_BANK_REVISION)
+        return []
+      }
+    }
+    return read<string[]>(KEYS.used, [])
+  },
   saveUsed: (used: string[]) => write(KEYS.used, used),
   loadHistory: () =>
     normalizeHistory(read<StoredHistoryEntry[]>(KEYS.history, [])),

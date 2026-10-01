@@ -26,6 +26,8 @@ function decodeBank(encoded: string): BankCategory[] {
 
 let cache: BankCategory[] | null = null
 
+export const WORD_BANK_REVISION = '2026-10-01-v3'
+
 export function getBank(): BankCategory[] {
   if (!cache) cache = decodeBank(ENCODED_BANK)
   return cache
