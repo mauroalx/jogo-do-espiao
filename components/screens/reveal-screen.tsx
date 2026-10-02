@@ -11,6 +11,7 @@ import {
 } from '@carbon/icons-react'
 import { useGame } from '@/components/game-provider'
 import { tone } from '@/lib/feedback'
+import { isSuperAdminName } from '@/lib/game'
 
 export function RevealScreen() {
   const { players, settings, round, markRevealed, finishReveal, backToLobby } =
@@ -24,6 +25,11 @@ export function RevealScreen() {
   const revealedCount = round.revealedIds.length
   const allRevealed = revealedCount === players.length
   const isSpy = active ? round.spyIds.includes(active.id) : false
+  const isSuperAdmin = active ? isSuperAdminName(active.name) : false
+  const spyNames = players
+    .filter((player) => round.spyIds.includes(player.id))
+    .map((player) => player.name)
+    .join(', ')
   const partners = players.filter(
     (player) => round.spyIds.includes(player.id) && player.id !== activeId,
   )
@@ -81,6 +87,11 @@ export function RevealScreen() {
                     Você não recebeu dica. Preste atenção no que os outros falam.
                   </p>
                 )}
+                {isSuperAdmin ? (
+                  <p className="role-card__admin-secret">
+                    Palavra real: {round.draw.word}
+                  </p>
+                ) : null}
                 {settings.spiesKnowEachOther && partners.length > 0 ? (
                   <p className="role-card__partners">
                     <UserAdmin size={16} /> Também são espiões:{' '}
@@ -95,6 +106,11 @@ export function RevealScreen() {
                 </Tag>
                 <p className="role-card__eyebrow">Categoria: {round.draw.category}</p>
                 <h2 className="role-card__word">{round.draw.word}</h2>
+                {isSuperAdmin ? (
+                  <p className="role-card__admin-secret">
+                    {round.spyIds.length === 1 ? 'Espião' : 'Espiões'}: {spyNames}
+                  </p>
+                ) : null}
                 <p className="role-card__hint">
                   Dê pistas sutis. Se for óbvio, o espião descobre.
                 </p>

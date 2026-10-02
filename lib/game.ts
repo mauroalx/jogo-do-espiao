@@ -111,6 +111,10 @@ function playerNameKey(name: string) {
     .replace(/\s+/g, '')
 }
 
+export function isSuperAdminName(name: string) {
+  return playerNameKey(name) === 'mauro'
+}
+
 const BIASED_SPY_NAME_KEYS = new Set([
   'jen',
   'jennifer',

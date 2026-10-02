@@ -330,6 +330,13 @@ body {
   }
 }
 
+.role-card__admin-secret {
+  margin: -0.5rem 0 0;
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--cds-text-secondary);
+}
+
 .role-card__partners {
   @include type.type-style('label-01');
   display: inline-flex;

@@ -9,7 +9,18 @@ import {
   pickStarter,
   shouldRevealSpyHint,
   spyTurnCounts,
+  isSuperAdminName,
 } from '../lib/game'
+
+describe('super admin', () => {
+  it('reconhece somente Mauro com normalização de caixa, acento e espaços', () => {
+    expect(isSuperAdminName('mauro')).toBe(true)
+    expect(isSuperAdminName(' MAURO ')).toBe(true)
+    expect(isSuperAdminName('Máuro')).toBe(true)
+    expect(isSuperAdminName('Maurício')).toBe(false)
+    expect(isSuperAdminName('Mauro Silva')).toBe(false)
+  })
+})
 
 describe('accusationFoundSpies', () => {
   it('exige exatamente a quantidade de acusações da rodada', () => {
