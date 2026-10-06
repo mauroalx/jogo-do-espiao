@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button, ProgressBar, Stack, Tag, Tile } from '@carbon/react'
 import {
   ArrowRight,
@@ -18,6 +18,17 @@ export function RevealScreen() {
     useGame()
   const [activeId, setActiveId] = useState<string | null>(null)
   const [showRole, setShowRole] = useState(false)
+  const [adminUnlocked, setAdminUnlocked] = useState(false)
+  const adminHoldTimer = useRef<number | null>(null)
+
+  useEffect(
+    () => () => {
+      if (adminHoldTimer.current !== null) {
+        window.clearTimeout(adminHoldTimer.current)
+      }
+    },
+    [],
+  )
 
   if (!round) return null
 
@@ -34,9 +45,27 @@ export function RevealScreen() {
     (player) => round.spyIds.includes(player.id) && player.id !== activeId,
   )
 
+  const cancelAdminHold = () => {
+    if (adminHoldTimer.current !== null) {
+      window.clearTimeout(adminHoldTimer.current)
+      adminHoldTimer.current = null
+    }
+  }
+
+  const startAdminHold = () => {
+    if (!isSuperAdmin) return
+    cancelAdminHold()
+    setAdminUnlocked(false)
+    adminHoldTimer.current = window.setTimeout(() => {
+      setAdminUnlocked(true)
+      adminHoldTimer.current = null
+    }, 1_200)
+  }
+
   const close = () => {
     if (active) markRevealed(active.id)
     setShowRole(false)
+    setAdminUnlocked(false)
     setActiveId(null)
   }
 
@@ -55,6 +84,13 @@ export function RevealScreen() {
               <Button
                 size="lg"
                 renderIcon={View}
+                onPointerDown={startAdminHold}
+                onPointerUp={cancelAdminHold}
+                onPointerCancel={cancelAdminHold}
+                onPointerLeave={cancelAdminHold}
+                onContextMenu={(event) => {
+                  if (isSuperAdmin) event.preventDefault()
+                }}
                 onClick={() => {
                   tone(440)
                   setShowRole(true)
@@ -62,7 +98,11 @@ export function RevealScreen() {
               >
                 Sou {active.name}, mostrar
               </Button>
-              <Button size="lg" kind="ghost" onClick={() => setActiveId(null)}>
+              <Button size="lg" kind="ghost" onClick={() => {
+                cancelAdminHold()
+                setAdminUnlocked(false)
+                setActiveId(null)
+              }}>
                 Não sou eu
               </Button>
             </Stack>
@@ -87,7 +127,7 @@ export function RevealScreen() {
                     Você não recebeu dica. Preste atenção no que os outros falam.
                   </p>
                 )}
-                {isSuperAdmin ? (
+                {isSuperAdmin && adminUnlocked ? (
                   <p className="role-card__admin-secret">
                     Palavra real: {round.draw.word}
                   </p>
@@ -106,7 +146,7 @@ export function RevealScreen() {
                 </Tag>
                 <p className="role-card__eyebrow">Categoria: {round.draw.category}</p>
                 <h2 className="role-card__word">{round.draw.word}</h2>
-                {isSuperAdmin ? (
+                {isSuperAdmin && adminUnlocked ? (
                   <p className="role-card__admin-secret">
                     {round.spyIds.length === 1 ? 'Espião' : 'Espiões'}: {spyNames}
                   </p>
@@ -153,6 +193,8 @@ export function RevealScreen() {
               disabled={done}
               renderIcon={done ? Checkmark : undefined}
               onClick={() => {
+                cancelAdminHold()
+                setAdminUnlocked(false)
                 setShowRole(false)
                 setActiveId(player.id)
               }}

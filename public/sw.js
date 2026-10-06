@@ -1,4 +1,4 @@
-const CACHE = 'espiao-v21'
+const CACHE = 'espiao-v22'
 const PRECACHE = ['/', '/manifest.webmanifest']
 
 self.addEventListener('install', (event) => {
